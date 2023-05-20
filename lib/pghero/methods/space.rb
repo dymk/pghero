@@ -10,11 +10,11 @@ module PgHero
       end
 
       def table_sizes
-        relation_sizes_impl('r', 'p')
+        relation_sizes_impl("r", "p")
       end
 
       def relation_sizes_impl(only_relkind)
-        select_all_size <<~SQL
+        select_all_size <<-SQL
           SELECT
             c.oid as oid,
             n.nspname AS schema,
@@ -47,7 +47,7 @@ module PgHero
           sizes = relation_sizes.to_h { |r| [[r[:schema], r[:relation]], r[:size_bytes]] }
           start_at = days.days.ago
 
-          stats = select_all_stats <<~SQL
+          stats = select_all_stats <<-SQL
             WITH t AS (
               SELECT
                 schema,
@@ -90,7 +90,7 @@ module PgHero
           sizes = relation_sizes.map { |r| [[r[:schema], r[:relation]], r[:size_bytes]] }.to_h
           start_at = 30.days.ago
 
-          stats = select_all_stats <<~SQL
+          stats = select_all_stats <<-SQL
             SELECT
               captured_at,
               size AS size_bytes
@@ -107,7 +107,7 @@ module PgHero
 
           stats << {
             captured_at: Time.now,
-            size_bytes: sizes[[schema, relation]].to_i
+            size_bytes: sizes[[schema, relation]].to_i,
           }
         else
           raise NotEnabled, "Space stats not enabled"
@@ -123,7 +123,7 @@ module PgHero
               schema: rs[:schema],
               relation: rs[:relation],
               size: rs[:size_bytes].to_i,
-              captured_at: now
+              captured_at: now,
             }
           end
         PgHero::SpaceStats.insert_all!(values) if values.any?

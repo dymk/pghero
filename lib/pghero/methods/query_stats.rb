@@ -129,7 +129,7 @@ module PgHero
         return if config["capture_query_stats"] && config["capture_query_stats"] != true
 
         # get all databases that use same query stats and build mapping
-        mapping = {id => database_name}
+        mapping = { id => database_name }
         PgHero.databases.select { |_, d| d.config["capture_query_stats"] == id }.each do |_, d|
           mapping[d.id] = d.database_name
         end
@@ -177,22 +177,22 @@ module PgHero
         if historical_query_stats_enabled? && supports_query_hash?
           start_at = 24.hours.ago
           select_all_stats <<~SQL
-            SELECT
-              captured_at,
-              total_time / 1000 / 60 AS total_minutes,
-              (total_time / calls) AS average_time,
-              calls,
-              (SELECT regexp_matches(query, '.*/\\*(.+?)\\*/'))[1] AS origin
-            FROM
-              pghero_query_stats
-            WHERE
-              database = #{quote(id)}
-              AND captured_at >= #{quote(start_at)}
-              AND query_hash = #{quote(query_hash)}
-              #{user ? "AND \"user\" = #{quote(user)}" : ""}
-            ORDER BY
-              1 ASC
-          SQL
+                             SELECT
+                               captured_at,
+                               total_time / 1000 / 60 AS total_minutes,
+                               (total_time / calls) AS average_time,
+                               calls,
+                               (SELECT regexp_matches(query, '.*/\\*(.+?)\\*/'))[1] AS origin
+                             FROM
+                               pghero_query_stats
+                             WHERE
+                               database = #{quote(id)}
+                               AND captured_at >= #{quote(start_at)}
+                               AND query_hash = #{quote(query_hash)}
+                               #{user ? "AND \"user\" = #{quote(user)}" : ""}
+                             ORDER BY
+                               1 ASC
+                           SQL
         else
           raise NotEnabled, "Query hash stats not enabled"
         end
@@ -309,7 +309,7 @@ module PgHero
             query_hash: (stats2.find { |s| s[:query_hash] } || {})[:query_hash],
             total_minutes: stats2.sum { |s| s[:total_minutes] },
             calls: stats2.sum { |s| s[:calls] }.to_i,
-            all_queries_total_minutes: stats2.sum { |s| s[:all_queries_total_minutes] }
+            all_queries_total_minutes: stats2.sum { |s| s[:all_queries_total_minutes] },
           }
           value[:total_percent] = value[:total_minutes] * 100.0 / value[:all_queries_total_minutes]
           value[:explainable_query] = stats2.map { |s| s[:explainable_query] }.select { |q| q && explainable?(q) }.first
@@ -338,7 +338,7 @@ module PgHero
               calls: qs[:calls],
               captured_at: now,
               query_hash: supports_query_hash? ? qs[:query_hash] : nil,
-              user: qs[:user]
+              user: qs[:user],
             }
           end
         PgHero::QueryStats.insert_all!(values)

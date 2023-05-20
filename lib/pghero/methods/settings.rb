@@ -2,8 +2,7 @@ module PgHero
   module Methods
     module Settings
       def settings
-        names =
-          if server_version_num >= 90500
+        names = if server_version_num >= 90500
             %i(
               max_connections shared_buffers effective_cache_size work_mem
               maintenance_work_mem min_wal_size max_wal_size checkpoint_completion_target

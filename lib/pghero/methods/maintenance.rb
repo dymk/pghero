@@ -9,7 +9,7 @@ module PgHero
         max_value = max_value.to_i
         threshold = threshold.to_i
 
-        select_all <<~SQL
+        select_all <<-SQL
           SELECT
             n.nspname AS schema,
             c.relname AS table,
@@ -24,8 +24,8 @@ module PgHero
             c.relkind = 'r'
             AND (#{quote(max_value)} - GREATEST(AGE(c.relfrozenxid), AGE(t.relfrozenxid))) < #{quote(threshold)}
           ORDER BY
-           3, 1, 2
-        SQL
+            3, 1, 2
+          SQL
       end
 
       def autovacuum_danger
@@ -35,7 +35,7 @@ module PgHero
 
       def vacuum_progress
         if server_version_num >= 90600
-          select_all <<~SQL
+          select_all <<-SQL
             SELECT
               pid,
               phase

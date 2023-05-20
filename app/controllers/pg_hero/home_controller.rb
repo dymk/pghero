@@ -51,8 +51,7 @@ module PgHero
 
       @sequence_danger = @database.sequence_danger(threshold: (params[:sequence_threshold] || 0.9).to_f, sequences: @readable_sequences)
 
-      @indexes, @indexes_timeout =
-        if @sequences_timeout
+      @indexes, @indexes_timeout = if @sequences_timeout
           # skip indexes for faster loading
           [[], true]
         else
@@ -100,20 +99,31 @@ module PgHero
         space_growth = @database.space_growth(days: @days, relation_sizes: @relation_sizes)
         @growth_bytes_by_relation = space_growth.to_h { |r| [[r[:schema], r[:relation]], r[:growth_bytes]] }
         if params[:sort] == "growth"
-          @relation_sizes.sort_by! { |r| s = @growth_bytes_by_relation[[r[:schema], r[:relation]]]; [s ? 0 : 1, -s.to_i, r[:schema], r[:relation]] }
+          sort_func = proc do |array|
+            array.sort_by! do |r|
+              s = @growth_bytes_by_relation[[r[:schema], r[:relation]]]
+              [s ? 0 : 1, -s.to_i, r[:schema], r[:relation]]
+            end
+          end
         end
       end
 
       if params[:sort] == "name"
         sort_func = proc { |array| array.sort_by! { |r| r[:relation] || r[:table] } }
+      end
+
+      if params[:sort].nil?
+        sort_func = proc { |array| array.sort_by! { |r| -r[:size_bytes] } }
+      end
+
+      if sort_func
         sort_func.call @relation_sizes
         @relation_sizes.each do |row|
           sort_func.call row[:partitions]
         end
       end
 
-      @header_options = @only_tables ? {tables: "t"} : {}
-
+      @header_options = @only_tables ? { tables: "t" } : {}
       across = params[:across].to_s.split(",")
       @unused_indexes = @database.unused_indexes(max_scans: 0, across: across)
       @unused_index_names = Set.new(@unused_indexes.map { |r| r[:index] })
@@ -127,7 +137,7 @@ module PgHero
       @relation = params[:relation]
       @title = @relation
       relation_space_stats = @database.relation_space_stats(@relation, schema: @schema)
-      @chart_data = [{name: "Value", data: relation_space_stats.map { |r| [r[:captured_at].change(sec: 0), r[:size_bytes].to_i] }, library: chart_library_options}]
+      @chart_data = [{ name: "Value", data: relation_space_stats.map { |r| [r[:captured_at].change(sec: 0), r[:size_bytes].to_i] }, library: chart_library_options }]
     end
 
     def index_bloat
@@ -161,8 +171,7 @@ module PgHero
         end
       end
 
-      @query_stats =
-        if @historical_query_stats_enabled && !request.xhr?
+      @query_stats = if @historical_query_stats_enabled && !request.xhr?
           []
         else
           @database.query_stats(
@@ -171,7 +180,7 @@ module PgHero
             end_at: @end_at,
             sort: @sort,
             min_average_time: @min_average_time,
-            min_calls: @min_calls
+            min_calls: @min_calls,
           )
         end
 
@@ -182,7 +191,7 @@ module PgHero
       # fix back button issue with caching
       response.headers["Cache-Control"] = "must-revalidate, no-store, no-cache, private"
       if request.xhr?
-        render layout: false, partial: "queries_table", locals: {queries: @query_stats, xhr: true}
+        render layout: false, partial: "queries_table", locals: { queries: @query_stats, xhr: true }
       end
     end
 
@@ -199,9 +208,9 @@ module PgHero
         if @show_details
           query_hash_stats = @database.query_hash_stats(@query_hash, user: @user)
 
-          @chart_data = [{name: "Value", data: query_hash_stats.map { |r| [r[:captured_at].change(sec: 0), (r[:total_minutes] * 60 * 1000).round] }, library: chart_library_options}]
-          @chart2_data = [{name: "Value", data: query_hash_stats.map { |r| [r[:captured_at].change(sec: 0), r[:average_time].round(1)] }, library: chart_library_options}]
-          @chart3_data = [{name: "Value", data: query_hash_stats.map { |r| [r[:captured_at].change(sec: 0), r[:calls]] }, library: chart_library_options}]
+          @chart_data = [{ name: "Value", data: query_hash_stats.map { |r| [r[:captured_at].change(sec: 0), (r[:total_minutes] * 60 * 1000).round] }, library: chart_library_options }]
+          @chart2_data = [{ name: "Value", data: query_hash_stats.map { |r| [r[:captured_at].change(sec: 0), r[:average_time].round(1)] }, library: chart_library_options }]
+          @chart3_data = [{ name: "Value", data: query_hash_stats.map { |r| [r[:captured_at].change(sec: 0), r[:calls]] }, library: chart_library_options }]
 
           @origins = query_hash_stats.group_by { |r| r[:origin].to_s }.to_h { |k, v| [k, v.size] }
           @total_count = query_hash_stats.size
@@ -223,10 +232,10 @@ module PgHero
     def system
       @title = "System"
       @periods = {
-        "1 hour" => {duration: 1.hour, period: 60.seconds},
-        "1 day" => {duration: 1.day, period: 10.minutes},
-        "1 week" => {duration: 1.week, period: 30.minutes},
-        "2 weeks" => {duration: 2.weeks, period: 1.hours}
+        "1 hour" => { duration: 1.hour, period: 60.seconds },
+        "1 day" => { duration: 1.day, period: 10.minutes },
+        "1 week" => { duration: 1.week, period: 30.minutes },
+        "2 weeks" => { duration: 2.weeks, period: 1.hours },
       }
       if @database.system_stats_provider == :azure
         # doesn't support 10, just 5 and 15
@@ -244,40 +253,39 @@ module PgHero
     end
 
     def cpu_usage
-      render json: [{name: "CPU", data: @database.cpu_usage(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options}]
+      render json: [{ name: "CPU", data: @database.cpu_usage(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options }]
     end
 
     def connection_stats
-      render json: [{name: "Connections", data: @database.connection_stats(**system_params), library: chart_library_options}]
+      render json: [{ name: "Connections", data: @database.connection_stats(**system_params), library: chart_library_options }]
     end
 
     def replication_lag_stats
-      render json: [{name: "Lag", data: @database.replication_lag_stats(**system_params), library: chart_library_options}]
+      render json: [{ name: "Lag", data: @database.replication_lag_stats(**system_params), library: chart_library_options }]
     end
 
     def load_stats
-      stats =
-        case @database.system_stats_provider
+      stats = case @database.system_stats_provider
         when :azure
           if @database.send(:azure_flexible_server?)
             [
-              {name: "Read IOPS", data: @database.read_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options},
-              {name: "Write IOPS", data: @database.write_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options}
+              { name: "Read IOPS", data: @database.read_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options },
+              { name: "Write IOPS", data: @database.write_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options },
             ]
           else
             [
-              {name: "IO Consumption", data: @database.azure_stats("io_consumption_percent", **system_params), library: chart_library_options}
+              { name: "IO Consumption", data: @database.azure_stats("io_consumption_percent", **system_params), library: chart_library_options },
             ]
           end
         when :gcp
           [
-            {name: "Read Ops", data: @database.read_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options},
-            {name: "Write Ops", data: @database.write_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options}
+            { name: "Read Ops", data: @database.read_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options },
+            { name: "Write Ops", data: @database.write_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options },
           ]
         else
           [
-            {name: "Read IOPS", data: @database.read_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options},
-            {name: "Write IOPS", data: @database.write_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options}
+            { name: "Read IOPS", data: @database.read_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options },
+            { name: "Write IOPS", data: @database.write_iops_stats(**system_params).map { |k, v| [k, v ? v.round : v] }, library: chart_library_options },
           ]
         end
       render json: stats
@@ -285,7 +293,7 @@ module PgHero
 
     def free_space_stats
       render json: [
-        {name: "Free Space", data: @database.free_space_stats(duration: 14.days, period: 1.hour), library: chart_library_options},
+        { name: "Free Space", data: @database.free_space_stats(duration: 14.days, period: 1.hour), library: chart_library_options },
       ]
     end
 
@@ -303,15 +311,14 @@ module PgHero
       # need to prevent CSRF and DoS
       if request.post? && @query.present?
         begin
-          explain_options =
-            case params[:commit]
+          explain_options = case params[:commit]
             when "Analyze"
-              {analyze: true}
+              { analyze: true }
             when "Visualize"
               if @explain_analyze_enabled
-                {analyze: true, costs: true, verbose: true, buffers: true, format: "json"}
+                { analyze: true, costs: true, verbose: true, buffers: true, format: "json" }
               else
-                {costs: true, verbose: true, format: "json"}
+                { costs: true, verbose: true, format: "json" }
               end
             else
               {}
@@ -327,8 +334,7 @@ module PgHero
           @visualize = params[:commit] == "Visualize"
         rescue ActiveRecord::StatementInvalid => e
           message = e.message
-          @error =
-            if message == "Unsafe statement"
+          @error = if message == "Unsafe statement"
               "Unsafe statement"
             elsif message.start_with?("PG::ProtocolViolation: ERROR:  bind message supplies 0 parameters")
               "Can't explain queries with bind parameters"
@@ -362,8 +368,7 @@ module PgHero
 
       if params[:security] && @database.server_version_num >= 90500
         connections.each do |connection|
-          connection[:ssl_status] =
-            if connection[:ssl]
+          connection[:ssl_status] = if connection[:ssl]
               # no way to tell if client used verify-full
               # so connection may not be actually secure
               "SSL"
@@ -424,8 +429,7 @@ module PgHero
 
     # TODO disable if historical query stats enabled?
     def reset_query_stats
-      success =
-        if @database.server_version_num >= 120000
+      success = if @database.server_version_num >= 120000
           @database.reset_query_stats
         else
           @database.reset_instance_query_stats
@@ -457,7 +461,7 @@ module PgHero
     end
 
     def default_url_options
-      {database: params[:database]}
+      { database: params[:database] }
     end
 
     def set_query_stats_enabled
@@ -472,8 +476,7 @@ module PgHero
         @indexes, @indexes_timeout = rescue_timeout([]) { @database.indexes }
       end
 
-      @suggested_indexes_by_query =
-        if !@indexes_timeout && @database.suggested_indexes_enabled?
+      @suggested_indexes_by_query = if !@indexes_timeout && @database.suggested_indexes_enabled?
           @database.suggested_indexes_by_query(query_stats: @query_stats.select { |qs| qs[:average_time] >= min_average_time && qs[:calls] >= min_calls }, indexes: @indexes)
         else
           {}
@@ -488,12 +491,12 @@ module PgHero
       {
         duration: params[:duration],
         period: params[:period],
-        series: true
+        series: true,
       }.delete_if { |_, v| v.nil? }
     end
 
     def chart_library_options
-      {pointRadius: 0, pointHoverRadius: 0, pointHitRadius: 5, borderWidth: 4}
+      { pointRadius: 0, pointHoverRadius: 0, pointHitRadius: 5, borderWidth: 4 }
     end
 
     def set_show_details
@@ -514,7 +517,7 @@ module PgHero
 
     def check_api
       if Rails.application.config.try(:api_only)
-        render_text "No support for Rails API. See https://github.com/pghero/pghero for a standalone app.", status:  :internal_server_error
+        render_text "No support for Rails API. See https://github.com/pghero/pghero for a standalone app.", status: :internal_server_error
       end
     end
 

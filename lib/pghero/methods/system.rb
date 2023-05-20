@@ -41,7 +41,7 @@ module PgHero
 
       def rds_stats(metric_name, duration: nil, period: nil, offset: nil, series: false)
         if system_stats_enabled?
-          aws_options = {region: aws_region}
+          aws_options = { region: aws_region }
           if aws_access_key_id
             aws_options[:access_key_id] = aws_access_key_id
             aws_options[:secret_access_key] = aws_secret_access_key
@@ -58,11 +58,11 @@ module PgHero
           resp = client.get_metric_statistics(
             namespace: "AWS/RDS",
             metric_name: metric_name,
-            dimensions: [{name: "DBInstanceIdentifier", value: aws_db_instance_identifier}],
+            dimensions: [{ name: "DBInstanceIdentifier", value: aws_db_instance_identifier }],
             start_time: start_time.iso8601,
             end_time: end_time.iso8601,
             period: period,
-            statistics: ["Average"]
+            statistics: ["Average"],
           )
           data = {}
           resp[:datapoints].sort_by { |d| d[:timestamp] }.each do |d|
@@ -85,8 +85,7 @@ module PgHero
         end_time = Time.at(((Time.now - offset).to_f / period).ceil * period)
         start_time = end_time - duration
 
-        interval =
-          case period
+        interval = case period
           when 60
             "PT1M"
           when 300
@@ -109,7 +108,7 @@ module PgHero
           metricnames: metric_name,
           aggregation: "Average",
           timespan: timespan,
-          interval: interval
+          interval: interval,
         )
 
         data = {}
@@ -176,7 +175,7 @@ module PgHero
             filter: "metric.type = \"cloudsql.googleapis.com/database/#{metric_name}\" AND resource.label.database_id = \"#{gcp_database_id}\"",
             interval: interval,
             view: Google::Cloud::Monitoring::V3::ListTimeSeriesRequest::TimeSeriesView::FULL,
-            aggregation: aggregation
+            aggregation: aggregation,
           })
         elsif defined?(Google::Cloud::Monitoring)
           require "google/cloud/monitoring"
@@ -199,7 +198,7 @@ module PgHero
             "metric.type = \"cloudsql.googleapis.com/database/#{metric_name}\" AND resource.label.database_id = \"#{gcp_database_id}\"",
             interval,
             Google::Monitoring::V3::ListTimeSeriesRequest::TimeSeriesView::FULL,
-            aggregation: aggregation
+            aggregation: aggregation,
           )
         else
           client = Google::Apis::MonitoringV3::MonitoringService.new
@@ -215,7 +214,7 @@ module PgHero
             interval_end_time: end_time.iso8601,
             view: 0, # full
             aggregation_alignment_period: "#{period}s",
-            aggregation_per_series_aligner: 12 # mean
+            aggregation_per_series_aligner: 12, # mean
           ).time_series
         end
 
@@ -246,7 +245,7 @@ module PgHero
             replication_lag: "ReplicaLag",
             read_iops: "ReadIOPS",
             write_iops: "WriteIOPS",
-            free_space: "FreeStorageSpace"
+            free_space: "FreeStorageSpace",
           }
           rds_stats(metrics[metric_key], **options)
         when :gcp
@@ -260,7 +259,7 @@ module PgHero
               connections: "postgresql/num_backends",
               replication_lag: "replication/replica_lag",
               read_iops: "disk/read_ops_count",
-              write_iops: "disk/write_ops_count"
+              write_iops: "disk/write_ops_count",
             }
             gcp_stats(metrics[metric_key], **options)
           end
@@ -276,7 +275,7 @@ module PgHero
               connections: "active_connections",
               replication_lag: replication_lag_stat,
               read_iops: "read_iops", # flexible server only
-              write_iops: "write_iops" # flexible server only
+              write_iops: "write_iops", # flexible server only
             }
             raise Error, "Metric not supported" unless metrics[metric_key]
             azure_stats(metrics[metric_key], **options)

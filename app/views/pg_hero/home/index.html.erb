@@ -64,11 +64,11 @@
       No columns near integer overflow
     <% end %>
     <% if @unreadable_sequences.any? %>
-      (<%= link_to pluralize(@unreadable_sequences.size, "unreadable sequence", "unreadable sequences"), {unreadable: "t"} %>)
+      (<%= link_to pluralize(@unreadable_sequences.size, "unreadable sequence", "unreadable sequences"), { unreadable: "t" } %>)
     <% end %>
   </div>
   <div class="alert alert-<%= @invalid_indexes.empty? && @invalid_constraints.empty? ? "success" : "warning" %>">
-    <% if @invalid_indexes.empty? && @invalid_constraints.empty?  %>
+    <% if @invalid_indexes.empty? && @invalid_constraints.empty? %>
       No invalid indexes or constraints
     <% else %>
       <% if @invalid_indexes.any? %>
@@ -197,7 +197,7 @@
 
     <pre><code>ALTER ROLE &lt;user&gt; SET statement_timeout TO '60s';</code></pre>
 
-    <%= render partial: "live_queries_table", locals: {queries: @long_running_queries, vacuum_progress: {}} %>
+    <%= render partial: "live_queries_table", locals: { queries: @long_running_queries, vacuum_progress: {} } %>
   </div>
 <% end %>
 
@@ -225,7 +225,7 @@
 
     <p><%= link_to "Use connection pooling", "https://www.craigkerstiens.com/2014/05/22/postgres-and-connection-pooling/", target: "_blank" %> for better performance. <%= link_to "PgBouncer", "https://wiki.postgresql.org/wiki/PgBouncer", target: "_blank" %> is a solid option.</p>
 
-    <%= render partial: "connections_table", locals: {connection_sources: @database.connection_sources.first(10)} %>
+    <%= render partial: "connections_table", locals: { connection_sources: @database.connection_sources.first(10) } %>
   </div>
 <% end %>
 
@@ -444,9 +444,9 @@ add_index <%= index[:table].to_sym.inspect %>, [<%= index[:columns].map(&:to_sym
 
     <% @suggested_indexes.each_with_index do |index, i| %>
       <hr />
-      <%= render partial: "suggested_index", locals: {index: index, details: index[:details]} %>
+      <%= render partial: "suggested_index", locals: { index: index, details: index[:details] } %>
       <p>to speed up</p>
-      <%= render partial: "queries_table", locals: {queries: index[:queries].map { |q| @query_stats_by_query[q] }, suggested_indexes: false} %>
+      <%= render partial: "queries_table", locals: { queries: index[:queries].map { |q| @query_stats_by_query[q] }, suggested_indexes: false } %>
     <% end %>
   </div>
 <% end %>
@@ -476,7 +476,7 @@ pg_stat_statements.track = all</pre>
     <p>Slow queries take <%= @database.slow_query_ms %> ms or more on average and have been called at least <%= @database.slow_query_calls %> times.</p>
     <p><%= link_to "Explain queries", explain_path %> to see where to add indexes.</p>
 
-    <%= render partial: "queries_table", locals: {queries: @slow_queries} %>
+    <%= render partial: "queries_table", locals: { queries: @slow_queries } %>
   </div>
 <% end %>
 
@@ -496,7 +496,7 @@ pg_stat_statements.track = all</pre>
       <pre>rails generate migration remove_unused_indexes</pre>
       <p>And paste</p>
       <pre style="overflow: scroll; white-space: pre; word-break: normal;"><% @unused_indexes.each do |query| %>
-<%= pghero_remove_index(query)%><% end %></pre>
+<%= pghero_remove_index(query) %><% end %></pre>
     </div>
 
     <table class="table">

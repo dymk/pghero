@@ -124,8 +124,7 @@ module PgHero
         config = YAML.safe_load(ERB.new(File.read(path)).result, aliases: true) if config_file_exists
         config ||= {}
 
-        @file_config =
-          if config[env]
+        @file_config = if config[env]
             config[env]
           elsif config["databases"] # preferred format
             config
@@ -145,13 +144,13 @@ module PgHero
 
       unless ENV["PGHERO_DATABASE_URL"]
         ActiveRecord::Base.configurations.configs_for(env_name: env, include_replicas_key => true).each do |db|
-          databases[db.send(spec_name_key)] = {"spec" => db.send(spec_name_key)}
+          databases[db.send(spec_name_key)] = { "spec" => db.send(spec_name_key) }
         end
       end
 
       if databases.empty?
         databases["primary"] = {
-          "url" => ENV["PGHERO_DATABASE_URL"] || connection_config(ActiveRecord::Base)
+          "url" => ENV["PGHERO_DATABASE_URL"] || connection_config(ActiveRecord::Base),
         }
       end
 
@@ -159,12 +158,12 @@ module PgHero
         databases.values.first.merge!(
           "aws_db_instance_identifier" => ENV["PGHERO_DB_INSTANCE_IDENTIFIER"],
           "gcp_database_id" => ENV["PGHERO_GCP_DATABASE_ID"],
-          "azure_resource_id" => ENV["PGHERO_AZURE_RESOURCE_ID"]
+          "azure_resource_id" => ENV["PGHERO_AZURE_RESOURCE_ID"],
         )
       end
 
       {
-        "databases" => databases
+        "databases" => databases,
       }
     end
 

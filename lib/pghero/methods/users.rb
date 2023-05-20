@@ -15,7 +15,7 @@ module PgHero
           [
             "CREATE ROLE #{user} LOGIN PASSWORD #{quote(password)}",
             "GRANT CONNECT ON DATABASE #{database} TO #{user}",
-            "GRANT USAGE ON SCHEMA #{schema} TO #{user}"
+            "GRANT USAGE ON SCHEMA #{schema} TO #{user}",
           ]
         if readonly
           if tables
@@ -42,7 +42,7 @@ module PgHero
           end
         end
 
-        {password: password}
+        { password: password }
       end
 
       # documented as unsafe to pass user input
@@ -65,7 +65,7 @@ module PgHero
             "ALTER DEFAULT PRIVILEGES IN SCHEMA #{schema} REVOKE SELECT ON SEQUENCES FROM #{user}",
             "ALTER DEFAULT PRIVILEGES IN SCHEMA #{schema} REVOKE ALL ON SEQUENCES FROM #{user}",
             "ALTER DEFAULT PRIVILEGES IN SCHEMA #{schema} REVOKE ALL ON TABLES FROM #{user}",
-            "DROP ROLE #{user}"
+            "DROP ROLE #{user}",
           ]
 
         # run commands

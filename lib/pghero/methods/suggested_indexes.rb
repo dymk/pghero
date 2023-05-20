@@ -110,7 +110,7 @@ module PgHero
 
         # find best index based on query structure and column stats
         parts.each do |statement, structure|
-          index = {found: false}
+          index = { found: false }
 
           if structure[:error]
             index[:explanation] = structure[:error]
@@ -139,11 +139,10 @@ module PgHero
 
                 # no index needed if less than 500 rows
                 if total_rows >= 500
-
                   if ["~~", "~~*"].include?(where.first[:op])
                     index[:found] = true
                     index[:row_progression] = [total_rows, index[:row_estimates].values.first]
-                    index[:index] = {table: table, columns: ["#{where.first[:column]} gist_trgm_ops"], using: "gist"}
+                    index[:index] = { table: table, columns: ["#{where.first[:column]} gist_trgm_ops"], using: "gist" }
                   else
                     # if most values are unique, no need to index others
                     rows_left = total_rows
@@ -173,7 +172,7 @@ module PgHero
 
                     if final_where.any?
                       index[:found] = true
-                      index[:index] = {table: table, columns: final_where}
+                      index[:index] = { table: table, columns: final_where }
                     end
                   end
                 else
@@ -194,23 +193,22 @@ module PgHero
       end
 
       def best_index_structure(statement)
-        return {error: "Empty statement"} if statement.to_s.empty?
-        return {error: "Too large"} if statement.to_s.length > 10000
+        return { error: "Empty statement" } if statement.to_s.empty?
+        return { error: "Too large" } if statement.to_s.length > 10000
 
         begin
           tree = PgQuery.parse(statement).tree
         rescue PgQuery::ParseError
-          return {error: "Parse error"}
+          return { error: "Parse error" }
         end
 
-        return {error: "Unknown structure"} unless tree.stmts.size == 1
+        return { error: "Unknown structure" } unless tree.stmts.size == 1
 
         tree = tree.stmts.first.stmt
 
         table = parse_table(tree) rescue nil
         unless table
-          error =
-            case tree.node
+          error = case tree.node
             when :insert_stmt
               "INSERT statement"
             when :variable_set_stmt
@@ -220,16 +218,16 @@ module PgHero
                 "JOIN not supported yet"
               end
             end
-          return {error: error || "Unknown structure"}
+          return { error: error || "Unknown structure" }
         end
 
         select = tree[tree.node.to_s]
         where = (select.where_clause ? parse_where(select.where_clause) : []) rescue nil
-        return {error: "Unknown structure"} unless where
+        return { error: "Unknown structure" } unless where
 
         sort = (select.sort_clause ? parse_sort(select.sort_clause) : []) rescue []
 
-        {table: table, where: where, sort: sort}
+        { table: table, where: where, sort: sort }
       end
 
       # TODO better row estimation
@@ -242,8 +240,7 @@ module PgHero
           rows_left * (1 - stats[:null_frac].to_f)
         else
           rows_left *= (1 - stats[:null_frac].to_f)
-          ret =
-            if stats[:n_distinct].to_f == 0
+          ret = if stats[:n_distinct].to_f == 0
               0
             elsif stats[:n_distinct].to_f < 0
               if total_rows > 0
@@ -288,10 +285,10 @@ module PgHero
             raise "Not Implemented"
           end
         elsif aexpr && ["=", "<>", ">", ">=", "<", "<=", "~~", "~~*", "BETWEEN"].include?(aexpr.name.first.string.send(str_method))
-          [{column: aexpr.lexpr.column_ref.fields.last.string.send(str_method), op: aexpr.name.first.string.send(str_method)}]
+          [{ column: aexpr.lexpr.column_ref.fields.last.string.send(str_method), op: aexpr.name.first.string.send(str_method) }]
         elsif tree.null_test
           op = tree.null_test.nulltesttype == :IS_NOT_NULL ? "not_null" : "null"
-          [{column: tree.null_test.arg.column_ref.fields.last.string.send(str_method), op: op}]
+          [{ column: tree.null_test.arg.column_ref.fields.last.string.send(str_method), op: op }]
         else
           raise "Not Implemented"
         end
@@ -305,27 +302,27 @@ module PgHero
         sort_clause.map do |v|
           {
             column: v.sort_by.node.column_ref.fields.last.string.send(str_method),
-            direction: v.sort_by.sortby_dir == :SORTBY_DESC ? "desc" : "asc"
+            direction: v.sort_by.sortby_dir == :SORTBY_DESC ? "desc" : "asc",
           }
         end
       end
 
       def column_stats(schema: nil, table: nil)
         select_all <<~SQL
-          SELECT
-            schemaname AS schema,
-            tablename AS table,
-            attname AS column,
-            null_frac,
-            n_distinct
-          FROM
-            pg_stats
-          WHERE
-            schemaname = #{quote(schema)}
-            #{table ? "AND tablename IN (#{Array(table).map { |t| quote(t) }.join(", ")})" : ""}
-          ORDER BY
-            1, 2, 3
-        SQL
+                     SELECT
+                       schemaname AS schema,
+                       tablename AS table,
+                       attname AS column,
+                       null_frac,
+                       n_distinct
+                     FROM
+                       pg_stats
+                     WHERE
+                       schemaname = #{quote(schema)}
+                       #{table ? "AND tablename IN (#{Array(table).map { |t| quote(t) }.join(", ")})" : ""}
+                     ORDER BY
+                       1, 2, 3
+                   SQL
       end
     end
   end
